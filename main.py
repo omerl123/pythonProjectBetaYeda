@@ -1,3 +1,4 @@
+import requests
 from selenium import webdriver
 from selenium.common import NoSuchElementException, TimeoutException
 from selenium.webdriver.chrome.service import Service
@@ -16,30 +17,50 @@ Run_Web = False
 Next_Run = False
 Email = input(str("Enter Your Email: "))
 Password = input("Enter Your Password: ")
+# Check the current stage
+count = 0
+expect_step = 8
 
 
-def logs(T, A ):
+def logs(T, A , S ):
     # Receives a string and a double and puts it in a text file
-    with open('BetaLogs.txt', 'a') as f:
-        f.write("The Login success to email:" + Email + "\n" + "The time it took to " + A + ":" + str(T) + " seconds.\n")
+    if (S==1):
+        with open('BetaLogs.txt', 'a') as f:
+            f.write("step: " + str(S) + " The Login success to email:" + Email + "\n" + "The time it took to " + A + ":" + str(T) + " seconds.\n")
+    elif (S==2):
+        with open('BetaLogs.txt', 'a') as f:
+            f.write("step: " + str(S) + " move to " + A + " It took, " + str(T) + " seconds.\n")
+    else:
+        with open('BetaLogs.txt', 'a') as f:
+            f.write("step: " + str(S) + " complete " + A + " ,until this stage completed :" + str(round(T * 100)) +"% from this skill.\n")
 
 if Email is not None and Password is not None:
     Run_Web = True
 if Run_Web:
+    start_script = time.time()
     service = Service(executable_path="chromedriver.exe")
     options = webdriver.ChromeOptions()
     options.service = service
 
     # use with the recommendation options to run this program on chrome
     driver = webdriver.Chrome(options=options)
-    try:
-        driver.get("https://web-stg.betayeda.dev/pokemontcgtutorial/signup/53399de4-67a6-4e2a-b29e-5f85ef61c37a")
-    except TimeoutException:
-        print("Page load timed out. The website may not be available.")
-        # Takes 5 seconds and checks if the argument it receives exists
+
+    url = "https://web-stg.betayeda.dev/pokemontcgtutorial/signup/53399de4-67a6-4e2a-b29e-5f85ef61c37a"
+
+    # Check for 503 error from 22:00 to 07:00
+    response = requests.get(url)
+    if response.status_code == 503:
+        print("Error 503. Please try tomorrow at 07:00 o'clock")
+        driver.quit()
+        exit()
+
+    driver.get(url)
+
+    # Takes 5 seconds and checks if the argument it receives exists
     Search_element = WebDriverWait(driver, 5).until(
         EC.presence_of_element_located((By.XPATH, "//a[@routerlink='/login']"))
     )
+
 
 
     # Click on this variable
@@ -108,9 +129,11 @@ if Run_Web:
         end_time = time.time()
         # how much time take to login
         taken_time = end_time - start_time
+        # Increase the step count by 1
+        count+=1
 
         # move elements to logs function
-        logs(taken_time, "Moving from the login to the home page")
+        logs(taken_time, "Moving from the login to the home page",count)
 
     except TimeoutException:
         # If not successful it means that the user failed to connect
@@ -131,25 +154,41 @@ if Run_Web:
 
     # how much time take to open skill
     taken_time = end_time-start_time
+    # take the name of skill
+    skill_element = driver.find_element(By.CSS_SELECTOR, ".skill-name")
 
-    logs(taken_time , "open the skill")
+    skill_name = skill_element.text
+
+    info = "skill: " + skill_name
+
+    count+=1
+    # add the skill name t log
+    logs(taken_time, info, count)
 
 
     Next_Run = True
     # Run While the Next Button is Clickable
     time.sleep(10)
 
-
     while Next_Run:
         try:
-            time.sleep(5)
+            time.sleep(4)
             # Check if you finish skill if you finish its write this to .txt file
             Skill_element = driver.find_element(By.CLASS_NAME, "skill-image-container")
             if Skill_element is not None:
+                # Makes a calculation of the running time of the script, some percentages of completion and enters into the log
+                finish_script = time.time()
+                total_time = finish_script - start_script
+                total = count/expect_step
+                minuts = total_time//60
+                seconds = total_time - (minuts * 60)
                 with open('BetaLogs.txt', 'a') as f:
-                    f.write(Email + " complete the skill. \n")
+                    f.write(Email + " complete the skill. \n" + "total time the script run: " + str(minuts) +" minuts " + "and " + str(seconds) + " second\n"
+                            "the test complete " + str(total*100) + "%\n")
+
+                driver.quit()
         except NoSuchElementException:
-            print(Email + "Couldn't finish the skill")
+            print(Email + " Couldn't finish the skill")
         try:
             # Checks if the button exists on the page
             next_button = WebDriverWait(driver, 10).until(
@@ -160,17 +199,21 @@ if Run_Web:
             print("The Button dont Exsit")
         # If the button is found and clickable, click it
         if next_button.is_enabled():
-            time.sleep(4)
+            time.sleep(1)
             next_button.click()
 
         else:
+
             try:
                 # Checks if the checkbox is found, if it exists, click it
                 CheckBox = driver.find_element(By.CLASS_NAME, "checkbox")
                 if CheckBox is not None:
-                    time.sleep(4)
+                    # Calculates some percentages and enters the log of the percentage of success so far and also the name of the stage
+                    count += 1
+                    total = count / expect_step
                     CheckBox.click()
-                    time.sleep(2)
+                    logs(total, "Checkbox", count)
+
             except NoSuchElementException:
                 print("Checkbox not found")
 
@@ -178,19 +221,23 @@ if Run_Web:
                 # Checks if the input line exists, if it exists, write in the input line
                 Input_fill = driver.find_element(By.XPATH , "//input[@formcontrolname='data']")
                 if Input_fill is not None:
-                    time.sleep(4)
+                    # Calculates some percentages and enters the log of the percentage of success so far and also the name of the stage
+                    count += 1
+                    total = count / expect_step
                     Input_fill.send_keys("dsagsg")
-                    time.sleep(2)
+                    logs(total, "open question", count)
             except NoSuchElementException:
                 print("Input field not found")
             try:
                 # Checks if there are several questions and if the array is larger than 1, mark the third element in the array
                 buttons = driver.find_elements(By.CSS_SELECTOR,
-                                           "app-radio-list[formcontrolname='data'] .learner-choose-one-group .learner-item .learner-task-name span")
+                                       "app-radio-list[formcontrolname='data'] .learner-choose-one-group .learner-item .learner-task-name span")
                 if len(buttons) >= 1:
-                    time.sleep(4)
+                    # Calculates some percentages and enters the log of the percentage of success so far and also the name of the stage
+                    count += 1
+                    total = count / expect_step
                     buttons[2].click()
-                    time.sleep(2)
+                    logs(total, "Choose one", count)
             except NoSuchElementException:
                 print("Buttons not found")
 
@@ -199,8 +246,10 @@ if Run_Web:
 
 
 
+
 # Take delay
 time.sleep(10)
+
 
 
 # close the test program
