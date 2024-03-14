@@ -7,7 +7,8 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 import time
 from selenium.webdriver.support.wait import WebDriverWait
-
+import Write
+import Read
 
 
 
@@ -15,24 +16,12 @@ from selenium.webdriver.support.wait import WebDriverWait
 
 Run_Web = False
 Next_Run = False
-Email = input(str("Enter Your Email: "))
-Password = input("Enter Your Password: ")
 # Check the current stage
 count = 0
 expect_step = 8
 
-
-def logs(T, A , S ):
-    # Receives a string and a double and puts it in a text file
-    if (S==1):
-        with open('BetaLogs.txt', 'a') as f:
-            f.write("step: " + str(S) + " The Login success to email:" + Email + "\n" + "The time it took to " + A + ":" + str(T) + " seconds.\n")
-    elif (S==2):
-        with open('BetaLogs.txt', 'a') as f:
-            f.write("step: " + str(S) + " move to " + A + " It took, " + str(T) + " seconds.\n")
-    else:
-        with open('BetaLogs.txt', 'a') as f:
-            f.write("step: " + str(S) + " complete " + A + " ,until this stage completed :" + str(round(T * 100)) +"% from this skill.\n")
+# Reads the file "Details.txt" and takes the URL, e-mail and password from it
+url,Email,Password=Read.ReadDetails()
 
 if Email is not None and Password is not None:
     Run_Web = True
@@ -45,7 +34,7 @@ if Run_Web:
     # use with the recommendation options to run this program on chrome
     driver = webdriver.Chrome(options=options)
 
-    url = "https://web-stg.betayeda.dev/pokemontcgtutorial/signup/53399de4-67a6-4e2a-b29e-5f85ef61c37a"
+
 
     # Check for 503 error from 22:00 to 07:00
     response = requests.get(url)
@@ -98,8 +87,7 @@ if Run_Web:
             EC.presence_of_element_located((By.ID, "mat-error-0"))
         )
         print("The email not contains @ ")
-        with open('BetaLogs.txt', 'a') as f:
-            f.write("The Login to " + Email + " Fail. \n")
+        Write.Fail(Email)
         driver.quit()
         raise SystemExit(1)
     except TimeoutException:
@@ -133,12 +121,11 @@ if Run_Web:
         count+=1
 
         # move elements to logs function
-        logs(taken_time, "Moving from the login to the home page",count)
+        Write.logs(taken_time, "Moving from the login to the home page",count,Email)
 
     except TimeoutException:
         # If not successful it means that the user failed to connect
-        with open('BetaLogs.txt', 'a') as f:
-            f.write("The Login to " + Email + " Fail. \n")
+        Write.Fail(Email)
 
     # end to counting time
 
@@ -163,7 +150,7 @@ if Run_Web:
 
     count+=1
     # add the skill name t log
-    logs(taken_time, info, count)
+    Write.logs(taken_time, info, count,Email)
 
 
     Next_Run = True
@@ -182,9 +169,7 @@ if Run_Web:
                 total = count/expect_step
                 minuts = total_time//60
                 seconds = total_time - (minuts * 60)
-                with open('BetaLogs.txt', 'a') as f:
-                    f.write(Email + " complete the skill. \n" + "total time the script run: " + str(minuts) +" minuts " + "and " + str(seconds) + " second\n"
-                            "the test complete " + str(total*100) + "%\n")
+                Write.CalcStep(Email, minuts, seconds, total)
 
                 driver.quit()
         except NoSuchElementException:
@@ -212,7 +197,7 @@ if Run_Web:
                     count += 1
                     total = count / expect_step
                     CheckBox.click()
-                    logs(total, "Checkbox", count)
+                    Write.logs(total, "Checkbox", count, Email)
 
             except NoSuchElementException:
                 print("Checkbox not found")
@@ -225,7 +210,7 @@ if Run_Web:
                     count += 1
                     total = count / expect_step
                     Input_fill.send_keys("dsagsg")
-                    logs(total, "open question", count)
+                    Write.logs(total, "open question", count, Email)
             except NoSuchElementException:
                 print("Input field not found")
             try:
@@ -237,7 +222,7 @@ if Run_Web:
                     count += 1
                     total = count / expect_step
                     buttons[2].click()
-                    logs(total, "Choose one", count)
+                    Write.logs(total, "Choose one", count, Email)
             except NoSuchElementException:
                 print("Buttons not found")
 
